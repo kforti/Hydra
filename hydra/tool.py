@@ -28,7 +28,7 @@ class Tool:
             path = "tool_set.yaml"
         commands = cls.commands_from_yaml(name, path)
         template = commands[command]["template"].strip()
-        return Command(name, template, params)
+        return Command(command, template, params)
 
     @classmethod
     def load(cls, name, path=None):
@@ -49,9 +49,10 @@ class Command:
 
     def __call__(self, input, output, **kwargs):
         self.params.update(kwargs)
-        command = self._template.render(input=input, output=output, **self.params).strip()
-        print(command)
-        return command
+        command = self._template.render(input=input, output=output, **self.params)
+        clean_command = command.replace('\n', '').replace('    ', ' ').replace('   ', ' ').replace('  ', ' ')
+        print(clean_command)
+        return clean_command
 
 
 class ExecuteCommand(Task):
@@ -61,6 +62,7 @@ class ExecuteCommand(Task):
         self.input = input
         self.output = output
         self.success_fn = success_fn
+        self.hydra_task = True
         super().__init__(name=command.name, *kwargs)
 
     @defaults_from_attrs('command', 'input', 'output', 'success_fn')
