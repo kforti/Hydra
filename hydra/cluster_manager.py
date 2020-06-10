@@ -1,6 +1,10 @@
+import asyncio
 import math
 
-from distributed import SchedulerPlugin, WorkerPlugin, Client
+from cadence.activity_method import activity_method
+from cadence.workerfactory import WorkerFactory
+from cadence.workflow import workflow_method, Workflow
+from distributed import SchedulerPlugin, WorkerPlugin, Client, Worker
 
 from hydra.executor import DaskExecutor
 
@@ -95,4 +99,72 @@ class ClusterManager:
 
     def _build_kubernetes(self):
         pass
+
+
+class ReportWorkerPlugin(WorkerPlugin):
+
+    def setup(self, worker: Worker):
+        from cadence.activity_method import activity_method
+        from cadence.workflow import workflow_method
+        worker_name = getattr(worker, 'address')
+        # Activities Interface
+        class GreetingActivities:
+            @activity_method(schedule_to_close_timeout_seconds=2, task_list=worker_name)
+            def compose_greeting(self, greeting: str, name: str) -> str:
+                raise NotImplementedError
+
+        # Activities Implementation
+        class GreetingActivitiesImpl:
+            def compose_greeting(self, greeting: str, name: str):
+                return greeting + " " + name + "!"
+
+        # Workflow Interface
+        class GreetingWorkflow:
+            @workflow_method(execution_start_to_close_timeout_seconds=10)
+            async def get_greeting(self, name: str) -> str:
+                raise NotImplementedError
+
+        # Workflow Implementation
+        class GreetingWorkflowImpl(GreetingWorkflow):
+
+            def __init__(self):
+                self.greeting_activities: GreetingActivities = Workflow.new_activity_stub(GreetingActivities)
+
+            async def get_greeting(self, name):
+                return await self.greeting_activities.compose_greeting("Hello", name)
+
+        #setattr(worker, 'name', worker.id)
+
+        print(worker_name)
+        factory = WorkerFactory("localhost", 7933, "sample")
+        cadence_worker = factory.new_worker(worker_name)
+        cadence_worker.register_activities_implementation(GreetingActivitiesImpl(), "GreetingActivities")
+        cadence_worker.register_workflow_implementation_type(GreetingWorkflowImpl)
+        factory.start()
+        worker.cadence_worker = cadence_worker
+        worker.factory = factory
+        print(threading.active_count())
+        return
+
+
+    def teardown(self, worker: Worker):
+        name = getattr(worker, 'name')
+
+    def transition(self, key: str, start: str, finish: str, **kwargs):
+        pass
+
+
+
+
+
+if __name__ == '__main__':
+    from distributed import LocalCluster, Client, Scheduler
+    import threading
+
+
+    cluster = LocalCluster()
+    client = Client(cluster.scheduler_address)
+
+    plugin = ReportWorkerPlugin()
+    client.register_worker_plugin(plugin)
 

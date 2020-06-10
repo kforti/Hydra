@@ -12,8 +12,18 @@ from distributed import Client, Future, fire_and_forget, worker_client
 from prefect import context
 from prefect.engine.executors.base import Executor
 
+from cadence.workflow import workflow_method, Workflow, WorkflowClient
 
-class DaskExecutor(Executor):
+def get_workflow(task_list):
+    # Workflow Interface
+    class GreetingWorkflow:
+        @workflow_method(execution_start_to_close_timeout_seconds=10, task_list=task_list)
+        async def get_greeting(self, name: str) -> str:
+            raise NotImplementedError
+    return GreetingWorkflow
+
+
+class HydraExecutor(Executor):
     """
     An executor that runs all functions using the `dask.distributed` scheduler on
     a (possibly local) dask cluster.  If you already have one running, provide the
@@ -74,11 +84,14 @@ class DaskExecutor(Executor):
                     silence_logs=logging.CRITICAL if not self.debug else logging.WARNING
                 )
                 self.kwargs.update(processes=self.local_processes)
-            with Client(self.address, **self.kwargs) as client:
-                self.hydra_client = Client(self.control_address)
-                self.client = client
-                self.is_started = True
-                yield self.client
+            self.client = WorkflowClient.new_client(domain=DOMAIN)
+
+            # result = greeting_workflow.get_greeting("Python")
+        #     with Client(self.address, **self.kwargs) as client:
+        #         self.hydra_client = Client(self.control_address)
+        #         self.client = client
+        #         self.is_started = True
+            yield self.client
         finally:
             self.client = None
             self.is_started = False
@@ -127,9 +140,10 @@ class DaskExecutor(Executor):
         Returns:
             - Future: a Future-like object that represents the computation of `fn(*args, **kwargs)`
         """
+        task = kwargs["task"]
+        workflow = self.client.new_workflow_stub(get_workflow(task.worker_id))
         dask_kwargs = self._prep_dask_kwargs()
         kwargs.update(dask_kwargs)
-        task = kwargs["task"]
 
         if self.is_started and hasattr(self, "client"):
             if hasattr(task, "hydra_task"):
