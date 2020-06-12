@@ -10,7 +10,7 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-requirements = ['Click>=7.0', 'PyYAML', 'prefect==0.11.5']
+requirements = ['Click>=7.0', 'PyYAML', 'prefect==0.11.5', 'cadence-client']
 
 setup_requirements = ['pytest-runner', ]
 
