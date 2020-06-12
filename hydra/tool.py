@@ -40,12 +40,18 @@ class Tool:
 
 
 class Command:
-    def __init__(self, name, template, params=None):
+    def __init__(self, name, template, tool=None, params=None):
         self.name = name
         self.template = template
         self.params = params or {}
+        self.tool = tool
 
         self._template = Template(self.template)
+
+    def transform(self, data):
+        cls = data.__class__
+        new_data = cls(inputs=data.outputs)
+        return new_data
 
     def __call__(self, input, output, **kwargs):
         self.params.update(kwargs)

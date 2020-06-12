@@ -107,3 +107,4 @@ ENV/
 
 # Hydra
 hydra/result.hydra
+*/dask-worker-space

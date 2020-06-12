@@ -3,13 +3,24 @@
 
 class Data:
     def __init__(self, input, output):
-        pass
+        self.input = input
+        self.output = output
+
+    @property
+    def mapping(self):
+        return {"input": self.input,
+                "output": self.output}
 
 
 class ParallelData:
-    def __init__(self, inputs, outputs):
+    def __init__(self, inputs=None, outputs=None):
         self.inputs = inputs
         self.outputs = outputs
+
+    @property
+    def mapping(self):
+        return {"input": self.inputs,
+                "output": self.outputs}
 
     def replace_inputs(self, old, new):
         inputs = [i.replace(old, new) for i in self.inputs]
@@ -33,6 +44,8 @@ class ParallelData:
             outputs.append(inp)
         return outputs
 
+
+
 if __name__ == '__main__':
     albacore_input = [
         "/home/kevin/bin/hydra_nanopore/tests/test_data/minion_sample_raw_data/Experiment_01/sample_02_local/pass/2",
@@ -47,9 +60,10 @@ if __name__ == '__main__':
                        "/home/kevin/bin/hydra_nanopore/tests/test_data/lambda_3.sam",
                        "/home/kevin/bin/hydra_nanopore/tests/test_data/lambda_4.sam",
                        "/home/kevin/bin/hydra_nanopore/tests/test_data/lambda_5.sam"]
-    parallel = ParallelData(albacore_input, albacore_output)
-    d = ParallelData(inputs=parallel.outputs,
-                     outputs=parallel.map_outputs("/home/kevin/bin/hydra_nanopore/tests/test_data/lambda_{partition}.sam"))
+    data = ParallelData(albacore_input, albacore_output)
+    print(isinstance(data, Data))
+    d = ParallelData(inputs=data.outputs,
+                     outputs=data.map_outputs("/home/kevin/bin/hydra_nanopore/tests/test_data/lambda_{partition}.sam"))
     print(d.outputs)
 
 
